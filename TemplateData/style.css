@@ -1,0 +1,94 @@
+body { padding: 0; margin: 0 }
+#unity-container { position: fixed; width: 100%; height: 100%; }
+#unity-canvas { width: 100%; height: 100%; background: #000000 }
+#unity-loading-bar { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none }
+#unity-logo { width: 200px; height: 200px; background: url('unity-logo-dark.png') no-repeat center }
+#unity-progress-bar-empty { margin-left: auto; margin-right: auto; width: 141px; height: 18px; margin-top: 10px; background: url('progress-bar-empty-dark.png') no-repeat center }
+#unity-progress-bar-full { width: 0%; height: 18px; margin-top: 10px; background: url('progress-bar-full-dark.png') no-repeat center }
+#unity-warning { position: absolute; left: 50%; top: 5%; transform: translate(-50%); background: white; padding: 10px; display: none }
+      canvas:focus {
+        outline: none;
+      }
+      html, body {
+        padding: 0;
+        margin: 0;
+
+        overflow: hidden;
+        -webkit-touch-callout:none;
+        -webkit-user-select:none;
+        -khtml-user-select:none;
+        -moz-user-select:none;
+        -ms-user-select:none;
+        user-select:none;
+        -webkit-tap-highlight-color:rgba(0,0,0,0);
+
+        height: 100%;
+
+  	background-position-x: 50%;
+  	background-repeat: no-repeat;
+ 	background-size: cover;
+        background-attachment: fixed;
+
+        /* Скрываем скролл */
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        scrollbar-height: none;
+      }
+      #canvas {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+      }
+      .loading_bg {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+  	background-position-x: 50%;
+  	background-repeat: no-repeat;
+ 	background-size: cover;
+        background-attachment: fixed;
+      }
+      .loading {
+        position: absolute;
+        /*background-color:red;*/
+      }
+      .loading_bar {
+        position: absolute;
+        z-index: 6;
+        transform: translate(-50%, -50%);
+      }
+      .loading_bar_fill {
+        position: absolute;
+        z-index: 6;
+        width: 0%;
+      	height: 100%;
+        top: 0%;
+        bottom: 0%;
+        left: 0%;
+      }
+      .loading_logo {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 6;
+        pointer-events: none;
+        background-position: center;
+  	background-repeat: no-repeat;
+ 	background-size: contain;
+        background-attachment: scroll;
+      }
+      .console_helper {
+        position: absolute;
+        background-color: white;
+        transform: translate(-50%, -50%);
+        left: 50%;
+        -webkit-box-shadow: 0px 0px 10px 5px rgba(34, 60, 80, 0.24);
+        -moz-box-shadow: 0px 0px 10px 5px rgba(34, 60, 80, 0.24);
+        box-shadow: 0px 0px 10px 5px rgba(34, 60, 80, 0.24);
+        overflow: hidden;
+        display: none;
+      }
+      p {
+        font-family: Arial, Helvetica, sans-serif;
+        word-wrap: break-word;
+      }

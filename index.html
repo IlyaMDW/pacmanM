@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+    <title>Pacman</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <link rel="manifest" href="manifest.webmanifest">
+  </head>  
+  <body>
+    <canvas id="canvas" class="canvas" tabindex="-1"></canvas>
+    <div class="loading_bg">
+      <div class="loading">
+        <div class="console_helper">
+          <p id="console_helper_text" style="position: absolute; overflow-x: hidden; overflow-y: scroll; scroll-behavior: smooth; scrollbar-width: none; margin: auto; top: 0; left: 0; bottom: 0; right: 0; overflow-width: hidden; text-align: left;"></p>
+        </div>
+        <div class="loading_logo"></div>
+        <div class="loading_bar">
+          <div class="loading_bar_fill"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      window.addEventListener("load", function () {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("ServiceWorker.js");
+        }
+      });	  
+
+      var unityInstanceRef;
+      var canvas = document.querySelector("#canvas");
+      var loading_bg = document.querySelector(".loading_bg");
+      var loading = document.querySelector(".loading");
+      var loading_bar = document.querySelector(".loading_bar");
+      var loading_bar_fill = document.querySelector(".loading_bar_fill");
+      var loading_logo = document.querySelector(".loading_logo");
+      var console_helper = document.querySelector(".console_helper");
+      var console_helper_text = document.getElementById("console_helper_text");
+	  
+      var scaleFactor;
+      var enableConsoleHelper = true;
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      document.addEventListener('contextmenu', event => event.preventDefault());
+      
+      var isDeviceTouch;
+      var isDeviceNavigator;
+
+      if('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        isDeviceTouch = true;
+      } else {
+        isDeviceTouch = false;
+      }
+
+      if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        isDeviceNavigator = true; 
+      } else {
+        isDeviceNavigator = false;
+      }
+      
+      window.addEventListener('pointerdown', () => {
+        window.focus();
+        canvas.focus();
+      });
+      window.addEventListener('touchstart', () => {
+        window.focus();
+        canvas.focus();
+      });
+
+
+      loading_logo.style.backgroundImage = "url('TemplateData/logo2.png')";
+
+      document.body.style.backgroundImage = "url('TemplateData/background.png')";
+
+      loading_bg.style.backgroundImage = "linear-gradient(#000000, #0d1521)";
+
+      function setLoading(logoPositionTop, logoPositionLeft, logoWidth, logoHeight, positionTop, positionLeft, width, height, barColor, barFillColor, barBorder, barFillBorder, barBorderRadius, barFillBorderRadius, barBackgroundImage, barBackgroundSize) {
+        loading_logo.style.top = logoPositionTop;
+        loading_logo.style.left = logoPositionLeft;
+
+        loading_logo.style.width = logoWidth; 
+        loading_logo.style.height = logoHeight;
+
+        loading_bar.style.top = positionTop;
+        loading_bar.style.left = positionLeft;
+
+        loading_bar.style.width = width;
+        loading_bar.style.height = height;
+
+        loading_bar.style.backgroundColor = barColor;
+        loading_bar_fill.style.backgroundColor = barFillColor;
+
+        loading_bar.style.boxShadow = barBorder;
+        loading_bar_fill.style.boxShadow = barFillBorder;
+
+        loading_bar.style.borderRadius = barBorderRadius;
+        loading_bar_fill.style.borderRadius = barFillBorderRadius;
+
+        loading_bar.style.backgroundImage = loading_bar_fill.style.backgroundImage = barBackgroundImage;
+        loading_bar.style.backgroundSize = loading_bar_fill.style.backgroundSize = barBackgroundSize;
+      }
+
+      function lock(object, aspectRatio) {
+        if(window.innerWidth / window.innerHeight > aspectRatio) {
+          object.style.width = window.innerHeight * aspectRatio + "px";
+          object.style.height = "100%";
+          scaleFactor = window.innerHeight * aspectRatio / 21;
+        } else {
+          object.style.width = "100%";
+          object.style.height = window.innerWidth / aspectRatio + "px";
+          scaleFactor = window.innerWidth / aspectRatio / 34;
+        }
+
+        object.style.margin = "auto";
+        object.style.top = "0";
+        object.style.left = "0";
+        object.style.bottom = "0";
+        object.style.right = "0";
+      }
+
+      function Update() {
+        var lockCanvasText = 'all';
+
+        var desktopStrings = ["pc", "desktop", "computer", "laptop", "windows", "пк", "компьютер", "виндовс", "оба", "все", "all", "полн"];
+        var mobileStrings = ["mobile", "phone", "handheld", "android", "телефон", "мобиль", "андроид", "оба", "все", "all", "полн"];
+        var touchStrings = ["touch", "тач"];
+        var navigatorStrings = ["nav", "навиг", "userAgent"];
+
+        if(touchStrings.some(i => lockCanvasText.includes(i))) {
+          if(isDeviceTouch) {
+            if(mobileStrings.some(i => lockCanvasText.includes(i))) {
+              lock(canvas, 9 / 16 );
+            }
+          } else {
+            if(desktopStrings.some(i => lockCanvasText.includes(i))) {
+              lock(canvas, 9 / 16 );
+            }
+          }
+        } else if(navigatorStrings.some(i => lockCanvasText.includes(i))) {
+          if(isDeviceNavigator) {
+            if(mobileStrings.some(i => lockCanvasText.includes(i))) {
+              lock(canvas, 9 / 16 );
+            }
+          } else {
+            if(desktopStrings.some(i => lockCanvasText.includes(i))) {
+              lock(canvas, 9 / 16 );
+            }
+          }
+        } else {
+          if(isDeviceNavigator) {
+            if(mobileStrings.some(i => lockCanvasText.includes(i))) {
+              lock(canvas, 9 / 16 );
+            }
+          } else {
+            if(desktopStrings.some(i => lockCanvasText.includes(i))) {
+              lock(canvas, 9 / 16 );
+            }
+          }
+        }
+
+        console_helper_text.style.fontSize = scaleFactor * 0.7 + 'px';
+
+      var loading_bar_style = 4;
+        if(window.innerWidth < window.innerHeight) {
+          console_helper.style.top = '15%';
+          console_helper.style.width = '80%';
+          console_helper.style.height = '20%';
+          console_helper.style.borderRadius = '3% 3% 3% 3% / 7%';
+          console_helper_text.style.padding = "3% 3% 3% 3%";
+
+          isPortrait = true;
+          lock(loading, 9/16);
+          if(loading_bar_style == 0) {
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "2%", "#FFF", "#00dc15", "0px 0px 0px 7px rgba(34, 60, 80, 0.2)", "0", "8px 8px 8px 8px", "8px 8px 8px 8px", "linear-gradient(45deg, rgba(0, 0, 0, 0.25) 25%, transparent 25%, transparent 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25) 75%, transparent 75%, transparent)", "15px 15px");
+          } else if(loading_bar_style == 1) {
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "2%", "rgba(255, 255, 255, 0.1)", "#FFF", "0", "0 0 10px rgba(255, 255, 255, 0.5)", "0", "0", "0", "0");
+          } else if(loading_bar_style == 2) {
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "2%", "0", "white", "0px 0px 0px 4px rgba(34, 60, 80, 0.2)", "0", "8px 8px 8px 8px", "8px 8px 8px 8px", "0", "0");
+          } else if(loading_bar_style == 3) {
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "1%", "#1c2329", "#ffffff", "0", "0", "0", "0", "0", "0");
+          } else if(loading_bar_style == 4) {
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "50%", "2.7%", "#1c2329", "#ffffff", "0", "0", "12px 12px 12px 12px", "12px 12px 12px 12px", "0", "0");
+          }
+        } else {
+          console_helper.style.top = '13%';
+          console_helper.style.width = '45%';
+          console_helper.style.height = '20%';
+          console_helper.style.borderRadius = '3% 3% 3% 3% / 13%';
+          console_helper_text.style.padding = "2% 2% 2% 2%";
+
+          isPortrait = false;
+          lock(loading, 16/9);
+          if(loading_bar_style == 0) {
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "3%", "#FFF", "#00dc15", "0px 0px 0px 7px rgba(34, 60, 80, 0.2)", "0", "12px 12px 12px 12px", "12px 12px 12px 12px", "linear-gradient(45deg, rgba(0, 0, 0, 0.25) 25%, transparent 25%, transparent 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25) 75%, transparent 75%, transparent)", "15px 15px");
+          } else if(loading_bar_style == 1) {
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "3%", "rgba(255, 255, 255, 0.1)", "#FFF", "0", "0 0 10px rgba(255, 255, 255, 0.5)", "0", "0", "0", "0");
+          } else if(loading_bar_style == 2) {
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "3%", "0", "white", "0px 0px 0px 4px rgba(34, 60, 80, 0.2)", "0", "12px 12px 12px 12px", "12px 12px 12px 12px", "0", "0");
+          } else if(loading_bar_style == 3) {
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "2%", "#1c2329", "#ffffff", "0", "0", "0", "0", "0", "0");
+          } else if(loading_bar_style == 4) {
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "30%", "4.4%", "#1c2329", "#ffffff", "0", "0", "16px 16px 16px 16px", "16px 16px 16px 16px", "0", "0");
+          }
+        }
+
+      }
+
+      Update();
+      window.addEventListener("resize", (event) => {
+        Update();
+      });
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/v5.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/v5.data.unityweb",
+        frameworkUrl: buildUrl + "/v5.framework.js.unityweb",
+        codeUrl: buildUrl + "/v5.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "Pacman",
+        productVersion: "1.0",
+        showBanner: unityShowBanner,
+      };
+        
+      function loadUnity() {
+          var script = document.createElement("script");
+          script.src = loaderUrl;
+          script.onload = () => {
+            createUnityInstance(canvas, config, (progress) => {
+          loading_bar_fill.style.width = 111.2 * progress + "%";
+            }).then((unityInstance) => {
+          unityInstanceRef = unityInstance;
+          loading_bg.style.display = "none";
+          Update();
+          // Настраиваем тени
+          var boxShadowText = 'high'.replace(/shadow|;|:|-|box|webkit|moz|""/gi, '').toLowerCase();
+      
+          var shadowLowTypes = ["low", "small", "first", "one", "перв"];
+          var shadowMediumTypes = ["medium", "second", "two", "средний", "середина", "втор"];
+          var shadowHighTypes = ["high", "third", "three", "последний", "трет"];
+
+          if(shadowLowTypes.some(i => boxShadowText.includes(i))) {
+            canvas.style.boxShadow = "0px 0px 10px 4px rgba(34, 60, 80, 0.6)";
+          } else if(shadowMediumTypes.some(i => boxShadowText.includes(i))) {
+            canvas.style.boxShadow = "0px 0px 20px 6px rgba(34, 60, 80, 0.7)";
+          } else if(shadowHighTypes.some(i => boxShadowText.includes(i))) {
+            canvas.style.boxShadow = "0px 0px 30px 8px rgba(34, 60, 80, 0.8)";
+          } else {
+            canvas.style.boxShadow = boxShadowText;
+          }
+            }).catch((message) => {
+          SendLog(message);
+              alert(message);
+            });
+          };
+          document.body.appendChild(script);
+      }
+      
+    loadUnity(); 
+
+	function copyTextToClipboard(arg){
+		var tempInput = document.createElement("input");
+		tempInput.value = arg;
+		document.body.appendChild(tempInput);
+		tempInput.focus();
+		tempInput.select();
+		document.execCommand("copy");
+		document.body.removeChild(tempInput);
+	}
+	
+    </script>
+  </body>
+</html>
